@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://bv5mribnrdbxj"]
+
+[ext_resource type="PackedScene" uid="uid://c8t2hykre08a4" path="res://scenes/cpu6502.tscn" id="1_x8wsv"]
+
+[node name="BootRoot" type="Node2D"]
+
+[node name="Node" parent="." instance=ExtResource("1_x8wsv")]
