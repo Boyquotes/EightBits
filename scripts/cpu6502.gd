@@ -7,9 +7,21 @@ var reg_sp: int
 var reg_pc: int
 var reg_status: int
 
+# Status register flag values
+const flag_negative = 128
+const flag_overflow = 64
+const flag_break = 16
+const flag_decimal = 8
+const flag_interrupt = 4
+const flag_zero = 2
+const flag_carry =1
+
+var prev_clock: bool
+var current_opcode: int
+
 class Instruction:
-	var mnemonic: Mnemonic
-	var addressingMode: AddressingMode
+	@export var mnemonic: Mnemonic
+	@export var addressingMode: AddressingMode
 	var cycles: int
 	var opcode: int
 
@@ -31,64 +43,121 @@ enum AddressingMode { IMP, ACC, IMM, ZP, ZPX, ZPY, REL, ABS, ABSX, ABSY, IND, ID
 var instruction_set = []
 
 var mnemonic_name: Dictionary = {
-	Mnemonic.LDA: "Load Acc",
-	Mnemonic.LDX: "Load X",
-	Mnemonic.LDY: "Load Y",
-	Mnemonic.STA: "Store Acc",
-	Mnemonic.STX: "Store X",
-	Mnemonic.STY: "Store Y",
-	Mnemonic.TAX: "Transfer Acc->X",
-	Mnemonic.TAY: "Transfer Acc->Y",
-	Mnemonic.TXA: "Transfer X->Acc",
-	Mnemonic.TYA: "Transfer Y->Acc",
-	Mnemonic.TSX: "Transfer SP->X",
-	Mnemonic.TXS: "Trasfer X->SP",
-	Mnemonic.PHA: "Push Acc->Stack",
-	Mnemonic.PHP: "Push Status->Stack",
-	Mnemonic.PLA: "Pull Stack->Acc",
-	Mnemonic.PLP: "Pull Stack->Status",
-	Mnemonic.AND: "Logical AND",
-	Mnemonic.EOR: "Exclusive OR",
-	Mnemonic.ORA: "Logical Inclusive OR",
-	Mnemonic.BIT: "Bit test",
-	Mnemonic.ADC: "Add with Carry",
-	Mnemonic.SBC: "Subtract with Carry",
-	Mnemonic.CMP: "Compare Acc",
-	Mnemonic.CPX: "Compare X",
-	Mnemonic.CPY: "Compare Y",
-	Mnemonic.INC: "Increment memory",
-	Mnemonic.INX: "Increment X",
-	Mnemonic.INY: "Increment Y",
-	Mnemonic.DEC: "Decrement memory",
-	Mnemonic.DEX: "Decrement X",
-	Mnemonic.DEY: "Decrement Y",
-	Mnemonic.ASL: "Arithmetic shift left Acc",
-	Mnemonic.LSR: "Logical shift right Acc",
-	Mnemonic.ROL: "Rotate left Acc",
-	Mnemonic.ROR: "Rotate right Acc",
-	Mnemonic.JMP: "Jump to address",
-	Mnemonic.JSR: "Jump to subroutine",
-	Mnemonic.RTS: "Return from subroutine",
-	Mnemonic.BCC: "Branch is Carry clear",
-	Mnemonic.BCS: "Branch if Carry set",
-	Mnemonic.BEQ: "Branch if Zero set",
-	Mnemonic.BMI: "Branch if Negative set",
-	Mnemonic.BNE: "Branch if Zero clear",
-	Mnemonic.BPL: "Branch if Negative clear",
-	Mnemonic.BVC: "Branch if oVerflow clear",
-	Mnemonic.BVS: "Branch if oVerflow set",
-	Mnemonic.CLC: "Clear Carry flag",
-	Mnemonic.CLD: "Clear Decimal flag",
-	Mnemonic.CLI: "Clear Interrupt disable flag",
-	Mnemonic.CLV: "Clear oVerflow flag",
-	Mnemonic.SEC: "Set Carry flag",
-	Mnemonic.SED: "Set Decimal flag",
-	Mnemonic.SEI: "Set Interrupt disable flag",
-	Mnemonic.BRK: "Break",
-	Mnemonic.NOP: "No operation",
-	Mnemonic.RTI: "Return from Interrupt"
+	Mnemonic.LDA: "LDA",
+	Mnemonic.LDX: "LDX",
+	Mnemonic.LDY: "LDY",
+	Mnemonic.STA: "STA",
+	Mnemonic.STX: "STX",
+	Mnemonic.STY: "STY",
+	Mnemonic.TAX: "TAX",
+	Mnemonic.TAY: "TAY",
+	Mnemonic.TXA: "TXA",
+	Mnemonic.TYA: "TYA",
+	Mnemonic.TSX: "TSX",
+	Mnemonic.TXS: "TXS",
+	Mnemonic.PHA: "PHA",
+	Mnemonic.PHP: "PHP",
+	Mnemonic.PLA: "PLA",
+	Mnemonic.PLP: "PLP",
+	Mnemonic.AND: "AND",
+	Mnemonic.EOR: "EOR",
+	Mnemonic.ORA: "ORA",
+	Mnemonic.BIT: "BIT",
+	Mnemonic.ADC: "ADC",
+	Mnemonic.SBC: "SBC",
+	Mnemonic.CMP: "CMP",
+	Mnemonic.CPX: "CPX",
+	Mnemonic.CPY: "CPY",
+	Mnemonic.INC: "INC",
+	Mnemonic.INX: "INX",
+	Mnemonic.INY: "INY",
+	Mnemonic.DEC: "DEC",
+	Mnemonic.DEX: "DEX",
+	Mnemonic.DEY: "DEY",
+	Mnemonic.ASL: "ASL",
+	Mnemonic.LSR: "LSR",
+	Mnemonic.ROL: "ROL",
+	Mnemonic.ROR: "ROR",
+	Mnemonic.JMP: "JMP",
+	Mnemonic.JSR: "JSR",
+	Mnemonic.RTS: "RTS",
+	Mnemonic.BCC: "BCC",
+	Mnemonic.BCS: "BCS",
+	Mnemonic.BEQ: "BEQ",
+	Mnemonic.BMI: "BMI",
+	Mnemonic.BNE: "BNE",
+	Mnemonic.BPL: "BPL",
+	Mnemonic.BVC: "BVC",
+	Mnemonic.BVS: "BVS",
+	Mnemonic.CLC: "CLC",
+	Mnemonic.CLD: "CLD",
+	Mnemonic.CLI: "CLI",
+	Mnemonic.CLV: "CLV",
+	Mnemonic.SEC: "SEC",
+	Mnemonic.SED: "SED",
+	Mnemonic.SEI: "SEI",
+	Mnemonic.BRK: "BRK",
+	Mnemonic.NOP: "NOP",
+	Mnemonic.RTI: "RTI"
 }
-
+var mnemonic_handlers: Dictionary = {
+	Mnemonic.LDA: mnemonic_LDA,
+	Mnemonic.LDX: mnemonic_LDX,
+	Mnemonic.LDY: mnemonic_UNKNOWN,
+	Mnemonic.STA: mnemonic_UNKNOWN,
+	Mnemonic.STX: mnemonic_UNKNOWN,
+	Mnemonic.STY: mnemonic_UNKNOWN,
+	Mnemonic.TAX: mnemonic_UNKNOWN,
+	Mnemonic.TAY: mnemonic_UNKNOWN,
+	Mnemonic.TXA: mnemonic_UNKNOWN,
+	Mnemonic.TYA: mnemonic_UNKNOWN,
+	Mnemonic.TSX: mnemonic_UNKNOWN,
+	Mnemonic.TXS: mnemonic_TXS,
+	Mnemonic.PHA: mnemonic_UNKNOWN,
+	Mnemonic.PHP: mnemonic_UNKNOWN,
+	Mnemonic.PLA: mnemonic_UNKNOWN,
+	Mnemonic.PLP: mnemonic_UNKNOWN,
+	Mnemonic.AND: mnemonic_UNKNOWN,
+	Mnemonic.EOR: mnemonic_UNKNOWN,
+	Mnemonic.ORA: mnemonic_UNKNOWN,
+	Mnemonic.BIT: mnemonic_UNKNOWN,
+	Mnemonic.ADC: mnemonic_UNKNOWN,
+	Mnemonic.SBC: mnemonic_UNKNOWN,
+	Mnemonic.CMP: mnemonic_UNKNOWN,
+	Mnemonic.CPX: mnemonic_UNKNOWN,
+	Mnemonic.CPY: mnemonic_UNKNOWN,
+	Mnemonic.INC: mnemonic_UNKNOWN,
+	Mnemonic.INX: mnemonic_INX,
+	Mnemonic.INY: mnemonic_UNKNOWN,
+	Mnemonic.DEC: mnemonic_UNKNOWN,
+	Mnemonic.DEX: mnemonic_UNKNOWN,
+	Mnemonic.DEY: mnemonic_UNKNOWN,
+	Mnemonic.ASL: mnemonic_UNKNOWN,
+	Mnemonic.LSR: mnemonic_UNKNOWN,
+	Mnemonic.ROL: mnemonic_UNKNOWN,
+	Mnemonic.ROR: mnemonic_UNKNOWN,
+	Mnemonic.JMP: mnemonic_UNKNOWN,
+	Mnemonic.JSR: mnemonic_JSR,
+	Mnemonic.RTS: mnemonic_UNKNOWN,
+	Mnemonic.BCC: mnemonic_UNKNOWN,
+	Mnemonic.BCS: mnemonic_UNKNOWN,
+	Mnemonic.BEQ: mnemonic_UNKNOWN,
+	Mnemonic.BMI: mnemonic_UNKNOWN,
+	Mnemonic.BNE: mnemonic_UNKNOWN,
+	Mnemonic.BPL: mnemonic_UNKNOWN,
+	Mnemonic.BVC: mnemonic_UNKNOWN,
+	Mnemonic.BVS: mnemonic_UNKNOWN,
+	Mnemonic.CLC: mnemonic_UNKNOWN,
+	Mnemonic.CLD: mnemonic_CLD,
+	Mnemonic.CLI: mnemonic_UNKNOWN,
+	Mnemonic.CLV: mnemonic_UNKNOWN,
+	Mnemonic.SEC: mnemonic_UNKNOWN,
+	Mnemonic.SED: mnemonic_UNKNOWN,
+	Mnemonic.SEI: mnemonic_SEI,
+	Mnemonic.BRK: mnemonic_UNKNOWN,
+	Mnemonic.NOP: mnemonic_UNKNOWN,
+	Mnemonic.RTI: mnemonic_UNKNOWN
+}
 var addressing_mode_name: Dictionary = {
 	AddressingMode.IMP: "Implicit",
 	AddressingMode.ACC: "Accumulator",
@@ -119,7 +188,21 @@ var addressing_mode_size: Dictionary = {
 	AddressingMode.IDXINDX: 2,
 	AddressingMode.INDIDXY: 2	
 }
-
+var addressing_mode_handlers: Dictionary = {
+	AddressingMode.IMP: addrmode_IMP,
+	AddressingMode.ACC: addrmode_ACC,
+	AddressingMode.IMM: addrmode_IMM,
+	AddressingMode.ZP: addrmode_ZP,
+	AddressingMode.ZPX: addrmode_ZPX,
+	AddressingMode.ZPY: addrmode_ZPY,
+	AddressingMode.REL: addrmode_REL,
+	AddressingMode.ABS: addrmode_ABS,
+	AddressingMode.ABSX: addrmode_ABSX,
+	AddressingMode.ABSY: addrmode_ABSY,
+	AddressingMode.IND: addrmode_IND,
+	AddressingMode.IDXINDX: addrmode_IDXINDX,
+	AddressingMode.INDIDXY: addrmode_INDIDXY,
+}
 # Make this external at some point
 var memory: PackedByteArray
 
@@ -133,11 +216,23 @@ func _ready():
 	reg_sp = 0
 	reg_pc = 0
 	reg_status = 0
+	prev_clock = false
+	current_opcode = 0
 	
 	instruction_set.resize(256)
 	memory.resize(65536)
 	
 	add_instructions()
+	load_rom()
+
+func load_rom():
+	var file = FileAccess.open("res://roms/combat.bin", FileAccess.READ)
+	var content = file.get_buffer(file.get_length())
+	for i in range(0, 2048):
+		memory[i + 0xf000] = content[i]
+		memory[i + 0xf800] = content[i]
+	var reset = memory[0xfffc] + (memory[0xfffd] << 8)
+	reg_pc = reset
 
 func add_instructions():
 	# ADC
@@ -349,11 +444,117 @@ func add_instruction(mnemonic, addressing_mode, opcode, cycles):
 	instruction.mnemonic = mnemonic
 	instruction.addressingMode = addressing_mode
 	instruction.opcode = opcode
+	instruction.cycles = cycles
 	instruction_set[opcode] = instruction
 
-func clock(clockState):
+func clock(_clockState: bool):
 	pass
 
+func print_status():
+	var instruction = instruction_set[current_opcode]
+	var format_string = "PC:%04x ACC:%02x X:%02x Y:%02x SP:%02x %s"
+	var actual_string = format_string % [reg_pc, reg_acc, reg_x, reg_y, reg_sp, mnemonic_name[instruction.mnemonic]]
+	print(actual_string)
+
 func tick_instruction():
-	pass
+	current_opcode = memory[reg_pc]
+	var current_instruction = instruction_set[current_opcode]
+	print_status()
+	mnemonic_handlers[current_instruction.mnemonic].call(current_instruction)
 	
+func _process(_delta):
+	tick_instruction()
+
+func get_address(mode: AddressingMode):
+	match mode:
+		AddressingMode.IMP:
+			pass
+
+func addrmode_IMP():
+	pass
+func addrmode_ACC():
+	pass
+func addrmode_IMM():
+	reg_pc += 1
+	return memory[reg_pc]
+func addrmode_ZP():
+	pass
+func addrmode_ZPX():
+	pass
+func addrmode_ZPY():
+	pass
+func addrmode_REL():
+	pass
+func addrmode_ABS():
+	reg_pc += 2
+	return memory[reg_pc - 1] | (memory[reg_pc] << 8)
+func addrmode_ABSX():
+	pass
+func addrmode_ABSY():
+	pass
+func addrmode_IND():
+	pass
+func addrmode_IDXINDX():
+	pass
+func addrmode_INDIDXY():
+	pass
+
+func set_status_flag(flag):
+	reg_sp = reg_sp | flag
+
+func clear_status_flag(flag):
+	reg_sp = reg_sp & (0xff ^ flag)
+
+func update_zero_flag(val):
+	if val == 0:
+		set_status_flag(flag_zero)
+	else:
+		clear_status_flag(flag_zero)
+
+func update_negative_flag(val):
+	if val & 0x80:
+		set_status_flag(flag_negative)
+	else:
+		clear_status_flag(flag_negative)
+
+func mnemonic_CLD(instruction: Instruction):
+	clear_status_flag(flag_decimal)
+	reg_pc += 1
+
+func mnemonic_INX(instruction: Instruction):
+	reg_x += 1
+	reg_pc += 1
+	update_zero_flag(reg_x)
+	update_negative_flag(reg_x)
+
+func mnemonic_JSR(instruction: Instruction):
+	var return_address = reg_pc + 2
+	memory[reg_sp] = return_address & 0xff
+	reg_sp -= 1
+	memory[reg_sp] = (return_address & 0xff00) >> 8
+	reg_sp -= 1
+	var value = addressing_mode_handlers[instruction.addressingMode].call()
+	reg_pc = value
+
+func mnemonic_LDA(instruction: Instruction):
+	reg_acc = addressing_mode_handlers[instruction.addressingMode].call()
+	update_zero_flag(reg_acc)
+	update_negative_flag(reg_acc)
+	reg_pc += 1
+
+func mnemonic_LDX(instruction: Instruction):
+	reg_x = addressing_mode_handlers[instruction.addressingMode].call()
+	update_zero_flag(reg_x)
+	update_negative_flag(reg_x)
+	reg_pc += 1
+
+func mnemonic_SEI(instruction: Instruction):
+	set_status_flag(flag_interrupt)
+	reg_pc += 1
+
+func mnemonic_TXS(instruction: Instruction):
+	reg_sp = reg_x
+	reg_pc += 1
+	
+func mnemonic_UNKNOWN(instruction: Instruction):
+	pass
