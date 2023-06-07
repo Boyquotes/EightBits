@@ -1,0 +1,118 @@
+[gd_scene load_steps=2 format=3 uid="uid://bspxlflht1d26"]
+
+[ext_resource type="Script" path="res://scenes/ui/cpu6502_status/cpu6502_status_ui.gd" id="1_2yu76"]
+
+[node name="cpu6502_status" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_2yu76")
+
+[node name="PCLabel" type="Label" parent="."]
+layout_mode = 0
+offset_right = 50.0
+offset_bottom = 26.0
+text = "PC:"
+horizontal_alignment = 2
+
+[node name="PCValue" type="Label" parent="."]
+layout_mode = 0
+offset_left = 50.0
+offset_right = 90.0
+offset_bottom = 23.0
+
+[node name="AccLabel" type="Label" parent="."]
+layout_mode = 0
+offset_top = 20.0
+offset_right = 50.0
+offset_bottom = 46.0
+text = "Acc:"
+horizontal_alignment = 2
+
+[node name="AccValue" type="Label" parent="."]
+layout_mode = 0
+offset_left = 50.0
+offset_top = 20.0
+offset_right = 100.0
+offset_bottom = 46.0
+
+[node name="XLabel" type="Label" parent="."]
+layout_mode = 0
+offset_top = 40.0
+offset_right = 50.0
+offset_bottom = 66.0
+text = "X:"
+horizontal_alignment = 2
+
+[node name="XValue" type="Label" parent="."]
+layout_mode = 0
+offset_left = 50.0
+offset_top = 40.0
+offset_right = 100.0
+offset_bottom = 66.0
+
+[node name="YLabel" type="Label" parent="."]
+layout_mode = 0
+offset_top = 60.0
+offset_right = 50.0
+offset_bottom = 86.0
+text = "Y:"
+horizontal_alignment = 2
+
+[node name="YValue" type="Label" parent="."]
+offset_left = 50.0
+offset_top = 60.0
+offset_right = 100.0
+offset_bottom = 86.0
+
+[node name="SPLabel" type="Label" parent="."]
+layout_mode = 0
+offset_top = 80.0
+offset_right = 50.0
+offset_bottom = 106.0
+text = "SP:"
+horizontal_alignment = 2
+
+[node name="SPValue" type="Label" parent="."]
+layout_mode = 0
+offset_left = 50.0
+offset_top = 80.0
+offset_right = 100.0
+offset_bottom = 106.0
+
+[node name="StatusLabel" type="Label" parent="."]
+layout_mode = 0
+offset_top = 100.0
+offset_right = 50.0
+offset_bottom = 126.0
+text = "SR:"
+horizontal_alignment = 2
+
+[node name="StatusValue" type="Label" parent="."]
+layout_mode = 0
+offset_left = 50.0
+offset_top = 100.0
+offset_right = 100.0
+offset_bottom = 126.0
+
+[node name="StepButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 21.0
+offset_top = 149.0
+offset_right = 66.0
+offset_bottom = 180.0
+text = "STEP"
+
+[node name="RunButton" type="Button" parent="."]
+offset_left = 82.0
+offset_top = 148.0
+offset_right = 127.0
+offset_bottom = 179.0
+text = "RUN
+"
+
+[connection signal="pressed" from="StepButton" to="." method="_on_step_button_pressed"]
+[connection signal="pressed" from="RunButton" to="." method="_on_run_button_pressed"]

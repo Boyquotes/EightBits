@@ -18,10 +18,11 @@ const flag_carry =1
 
 var prev_clock: bool
 var current_opcode: int
+var running: bool
 
 class Instruction:
 	@export var mnemonic: Mnemonic
-	@export var addressingMode: AddressingMode
+	@export var addressing_mode: AddressingMode
 	var cycles: int
 	var opcode: int
 
@@ -103,10 +104,10 @@ var mnemonic_name: Dictionary = {
 var mnemonic_handlers: Dictionary = {
 	Mnemonic.LDA: mnemonic_LDA,
 	Mnemonic.LDX: mnemonic_LDX,
-	Mnemonic.LDY: mnemonic_UNKNOWN,
-	Mnemonic.STA: mnemonic_UNKNOWN,
-	Mnemonic.STX: mnemonic_UNKNOWN,
-	Mnemonic.STY: mnemonic_UNKNOWN,
+	Mnemonic.LDY: mnemonic_LDY,
+	Mnemonic.STA: mnemonic_STA,
+	Mnemonic.STX: mnemonic_STX,
+	Mnemonic.STY: mnemonic_STY,
 	Mnemonic.TAX: mnemonic_UNKNOWN,
 	Mnemonic.TAY: mnemonic_UNKNOWN,
 	Mnemonic.TXA: mnemonic_UNKNOWN,
@@ -118,7 +119,7 @@ var mnemonic_handlers: Dictionary = {
 	Mnemonic.PLA: mnemonic_UNKNOWN,
 	Mnemonic.PLP: mnemonic_UNKNOWN,
 	Mnemonic.AND: mnemonic_UNKNOWN,
-	Mnemonic.EOR: mnemonic_UNKNOWN,
+	Mnemonic.EOR: mnemonic_EOR,
 	Mnemonic.ORA: mnemonic_UNKNOWN,
 	Mnemonic.BIT: mnemonic_UNKNOWN,
 	Mnemonic.ADC: mnemonic_UNKNOWN,
@@ -138,21 +139,21 @@ var mnemonic_handlers: Dictionary = {
 	Mnemonic.ROR: mnemonic_UNKNOWN,
 	Mnemonic.JMP: mnemonic_UNKNOWN,
 	Mnemonic.JSR: mnemonic_JSR,
-	Mnemonic.RTS: mnemonic_UNKNOWN,
+	Mnemonic.RTS: mnemonic_RTS,
 	Mnemonic.BCC: mnemonic_UNKNOWN,
 	Mnemonic.BCS: mnemonic_UNKNOWN,
-	Mnemonic.BEQ: mnemonic_UNKNOWN,
+	Mnemonic.BEQ: mnemonic_BEQ,
 	Mnemonic.BMI: mnemonic_UNKNOWN,
-	Mnemonic.BNE: mnemonic_UNKNOWN,
+	Mnemonic.BNE: mnemonic_BNE,
 	Mnemonic.BPL: mnemonic_UNKNOWN,
 	Mnemonic.BVC: mnemonic_UNKNOWN,
 	Mnemonic.BVS: mnemonic_UNKNOWN,
-	Mnemonic.CLC: mnemonic_UNKNOWN,
+	Mnemonic.CLC: mnemonic_CLC,
 	Mnemonic.CLD: mnemonic_CLD,
 	Mnemonic.CLI: mnemonic_UNKNOWN,
 	Mnemonic.CLV: mnemonic_UNKNOWN,
 	Mnemonic.SEC: mnemonic_UNKNOWN,
-	Mnemonic.SED: mnemonic_UNKNOWN,
+	Mnemonic.SED: mnemonic_SED,
 	Mnemonic.SEI: mnemonic_SEI,
 	Mnemonic.BRK: mnemonic_UNKNOWN,
 	Mnemonic.NOP: mnemonic_UNKNOWN,
@@ -442,7 +443,7 @@ func add_instructions():
 func add_instruction(mnemonic, addressing_mode, opcode, cycles):
 	var instruction = Instruction.new()
 	instruction.mnemonic = mnemonic
-	instruction.addressingMode = addressing_mode
+	instruction.addressing_mode = addressing_mode
 	instruction.opcode = opcode
 	instruction.cycles = cycles
 	instruction_set[opcode] = instruction
@@ -452,58 +453,58 @@ func clock(_clockState: bool):
 
 func print_status():
 	var instruction = instruction_set[current_opcode]
-	var format_string = "PC:%04x ACC:%02x X:%02x Y:%02x SP:%02x %s"
-	var actual_string = format_string % [reg_pc, reg_acc, reg_x, reg_y, reg_sp, mnemonic_name[instruction.mnemonic]]
+	var format_string = "PC:%04x(%d) ACC:%02x X:%02x Y:%02x SP:%02x %s %s"
+	var actual_string = format_string % [reg_pc, reg_pc, reg_acc, reg_x, reg_y, reg_sp, mnemonic_name[instruction.mnemonic], addressing_mode_name[instruction.addressing_mode]]
 	print(actual_string)
 
 func tick_instruction():
 	current_opcode = memory[reg_pc]
-	var current_instruction = instruction_set[current_opcode]
 	print_status()
+	var current_instruction = instruction_set[current_opcode]
 	mnemonic_handlers[current_instruction.mnemonic].call(current_instruction)
 	
 func _process(_delta):
-	tick_instruction()
+	if running:
+		tick_instruction()
 
 func get_address(mode: AddressingMode):
 	match mode:
 		AddressingMode.IMP:
 			pass
 
-func addrmode_IMP():
-	pass
-func addrmode_ACC():
-	pass
-func addrmode_IMM():
-	reg_pc += 1
-	return memory[reg_pc]
-func addrmode_ZP():
-	pass
-func addrmode_ZPX():
-	pass
-func addrmode_ZPY():
-	pass
-func addrmode_REL():
-	pass
-func addrmode_ABS():
-	reg_pc += 2
-	return memory[reg_pc - 1] | (memory[reg_pc] << 8)
-func addrmode_ABSX():
-	pass
-func addrmode_ABSY():
-	pass
-func addrmode_IND():
-	pass
-func addrmode_IDXINDX():
-	pass
-func addrmode_INDIDXY():
-	pass
+# These pass back the address of the required value
+func addrmode_IMP() -> int:
+	return 0
+func addrmode_ACC() -> int:
+	return 0
+func addrmode_IMM() -> int:
+	return reg_pc + 1
+func addrmode_ZP() -> int:
+	return memory[reg_pc+1]
+func addrmode_ZPX() -> int:
+	return (memory[reg_pc+1] + reg_x) & 0xff
+func addrmode_ZPY() -> int:
+	return 0
+func addrmode_REL() -> int:
+	return 0
+func addrmode_ABS() -> int:
+	return reg_pc + 1
+func addrmode_ABSX() -> int:
+	return 0
+func addrmode_ABSY() -> int:
+	return memory[reg_pc+1] | (memory[reg_pc+2] << 8) + reg_y
+func addrmode_IND() -> int:
+	return 0
+func addrmode_IDXINDX() -> int:
+	return 0
+func addrmode_INDIDXY() -> int:
+	return 0
 
 func set_status_flag(flag):
-	reg_sp = reg_sp | flag
+	reg_status = reg_status | flag
 
 func clear_status_flag(flag):
-	reg_sp = reg_sp & (0xff ^ flag)
+	reg_status = reg_status & (0xff ^ flag)
 
 func update_zero_flag(val):
 	if val == 0:
@@ -517,13 +518,42 @@ func update_negative_flag(val):
 	else:
 		clear_status_flag(flag_negative)
 
+# Mnemonic handlers
+
+func mnemonic_BEQ(instruction: Instruction):
+	if reg_status & flag_zero != 0:
+		var offset = memory[reg_pc + 1]
+		if offset & 0x80:
+			offset = -(128 - (offset & 0x7f))
+		reg_pc += offset
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
+func mnemonic_BNE(instruction: Instruction):
+	if reg_status & flag_zero == 0:
+		var offset = memory[reg_pc + 1]
+		if offset & 0x80:
+			offset = -(128 - (offset & 0x7f))
+		reg_pc += offset
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
+func mnemonic_CLC(instruction: Instruction):
+	clear_status_flag(flag_carry)
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
 func mnemonic_CLD(instruction: Instruction):
 	clear_status_flag(flag_decimal)
-	reg_pc += 1
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
+func mnemonic_EOR(instruction: Instruction):
+	var address = addressing_mode_handlers[instruction.addressing_mode].call()
+	reg_acc = reg_acc ^ memory[address]
+	update_zero_flag(reg_acc)
+	update_negative_flag(reg_acc)
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_INX(instruction: Instruction):
-	reg_x += 1
-	reg_pc += 1
+	reg_x = (reg_x + 1) & 0xff
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
 	update_zero_flag(reg_x)
 	update_negative_flag(reg_x)
 
@@ -533,28 +563,62 @@ func mnemonic_JSR(instruction: Instruction):
 	reg_sp -= 1
 	memory[reg_sp] = (return_address & 0xff00) >> 8
 	reg_sp -= 1
-	var value = addressing_mode_handlers[instruction.addressingMode].call()
-	reg_pc = value
+	var address = addressing_mode_handlers[instruction.addressing_mode].call()
+	var dest = memory[address] | (memory[address + 1] << 8)
+	reg_pc = dest
 
 func mnemonic_LDA(instruction: Instruction):
-	reg_acc = addressing_mode_handlers[instruction.addressingMode].call()
+	var address = addressing_mode_handlers[instruction.addressing_mode].call()
+	reg_acc = memory[address]
 	update_zero_flag(reg_acc)
 	update_negative_flag(reg_acc)
-	reg_pc += 1
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_LDX(instruction: Instruction):
-	reg_x = addressing_mode_handlers[instruction.addressingMode].call()
+	reg_x = memory[addressing_mode_handlers[instruction.addressing_mode].call()]
 	update_zero_flag(reg_x)
 	update_negative_flag(reg_x)
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
+func mnemonic_LDY(instruction: Instruction):
+	reg_y = memory[addressing_mode_handlers[instruction.addressing_mode].call()]
+	update_zero_flag(reg_y)
+	update_negative_flag(reg_y)
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
+func mnemonic_RTS(instruction: Instruction):
+	var return_address = (memory[reg_sp + 1] << 8) | memory[reg_sp + 2]
+	reg_sp += 2
+	reg_pc = return_address + 1
+	pass
+
+func mnemonic_SED(instruction: Instruction):
+	set_status_flag(flag_decimal)
 	reg_pc += 1
 
 func mnemonic_SEI(instruction: Instruction):
 	set_status_flag(flag_interrupt)
-	reg_pc += 1
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
+func mnemonic_STA(instruction: Instruction):
+	var address = addressing_mode_handlers[instruction.addressing_mode].call()
+	memory[address] = reg_acc
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
+func mnemonic_STX(instruction: Instruction):
+	var address = addressing_mode_handlers[instruction.addressing_mode].call()
+	memory[address] = reg_x
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
+func mnemonic_STY(instruction: Instruction):
+	var address = addressing_mode_handlers[instruction.addressing_mode].call()
+	memory[address] = reg_y
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_TXS(instruction: Instruction):
 	reg_sp = reg_x
-	reg_pc += 1
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
 	
 func mnemonic_UNKNOWN(instruction: Instruction):
 	pass
+
