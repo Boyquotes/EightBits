@@ -530,11 +530,11 @@ f1bb	SelGO	LDA  BCDvar		; Since we have incremented BINvar, we
 f1bd		SED                     ; must increment BCDvar in BCD to keep
 f1be		CLC                     ; it in sync. Note BCDvar is actually
 f1bf		ADC  #1                 ; BinVar+1, since it's incremented when
-			STA  BCDvar             ; we reset but don't increment BINvar.
-			STA  SCORE              ; Display variation as score 0
-			CLD
-			BIT  GAMVAR             ; GAMSHP was reset at ClrGam...
-			BPL  ResetField         ; if this is a plane game,
+f1c1		STA  BCDvar             ; we reset but don't increment BINvar.
+f1c3		STA  SCORE              ; Display variation as score 0
+f1c5		CLD
+f1c6		BIT  GAMVAR             ; GAMSHP was reset at ClrGam...
+f1c8		BPL  ResetField         ; if this is a plane game,
 			INC  GAMSHP             ; increase GAMSHP.
 			BVC  ResetField         ; if this is a jet game,
 			INC  GAMSHP             ; increase GAMSHP further still.

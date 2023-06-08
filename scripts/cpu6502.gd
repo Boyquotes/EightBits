@@ -123,7 +123,7 @@ var mnemonic_handlers: Dictionary = {
 	Mnemonic.AND: mnemonic_UNKNOWN,
 	Mnemonic.EOR: mnemonic_EOR,
 	Mnemonic.ORA: mnemonic_UNKNOWN,
-	Mnemonic.BIT: mnemonic_UNKNOWN,
+	Mnemonic.BIT: mnemonic_BIT,
 	Mnemonic.ADC: mnemonic_ADC,
 	Mnemonic.SBC: mnemonic_UNKNOWN,
 	Mnemonic.CMP: mnemonic_UNKNOWN,
@@ -147,7 +147,7 @@ var mnemonic_handlers: Dictionary = {
 	Mnemonic.BEQ: mnemonic_BEQ,
 	Mnemonic.BMI: mnemonic_UNKNOWN,
 	Mnemonic.BNE: mnemonic_BNE,
-	Mnemonic.BPL: mnemonic_UNKNOWN,
+	Mnemonic.BPL: mnemonic_BPL,
 	Mnemonic.BVC: mnemonic_UNKNOWN,
 	Mnemonic.BVS: mnemonic_UNKNOWN,
 	Mnemonic.CLC: mnemonic_CLC,
@@ -569,46 +569,6 @@ func update_negative_flag(val):
 # Mnemonic handlers
 
 func mnemonic_ADC(instruction: Instruction):
-#				if(GetDecimalFlag())
-#				{
-#					uint8_t val = pMemory->Read(addr);
-#					uint8_t valLo = val & 0x0f;
-#					uint8_t valHi = (val & 0xf0) >> 4;
-#					uint8_t accLo = reg.acc & 0x0f;
-#					uint8_t accHi = (reg.acc & 0xf0) >> 4;
-#
-#					uint8_t resLo = valLo + accLo + (GetCarryFlag() ? 1 : 0);
-#					bool loCarry = resLo >= 10;
-#					if(resLo > 10) resLo -= 10;
-#					uint8_t resHi = valHi + accHi + (loCarry ? 1 : 0);
-#					if(resHi > 10)
-#					{
-#						SetCarryFlag();
-#					}
-#					else
-#					{
-#						ClearCarryFlag();
-#					}
-#					if(resHi > 10) resHi -= 10;
-#					reg.acc = (resHi << 4) | resLo;
-#				}
-#				else
-#				{
-#					uint16_t val = (uint16_t)reg.acc;
-#					uint16_t addValue = pMemory->Read(addr) + (GetCarryFlag() ? 1 : 0);
-#					val += addValue;
-#					reg.acc = val & 0x00ff;
-#					(val & 0x0100) ? SetCarryFlag() : ClearCarryFlag();
-#					(reg.acc == 0) ? SetZeroFlag() : ClearZeroFlag();
-#					(reg.acc & 0x80) ? SetNegativeFlag() : ClearNegativeFlag();
-#					// overflow flag
-#					int8_t vals = (int8_t)reg.acc;
-#					int16_t val16s = (int16_t)vals;
-#					int8_t adds = ((int8_t)pMemory->Read(addr)) + (GetCarryFlag() ? 1 : 0);
-#					int16_t add16s = (int16_t)adds;
-#					int16_t result = val16s + add16s;
-#					(result <= 127 && result >= -128) ? ClearOverflowFlag() : SetOverflowFlag();
-#				}
 	var carry_in = 0
 	if reg_status & flag_carry:
 		carry_in = 1
@@ -616,7 +576,18 @@ func mnemonic_ADC(instruction: Instruction):
 	
 	if reg_status & flag_decimal:
 		# Decimal mode ADC
-		error("ADC Decimal mode not defined")
+		#error("ADC Decimal mode not defined")
+		var add_value = memory[address]
+		var add_value_l = add_value & 0x0f
+		var add_value_h = (add_value & 0xf0) >> 4
+		var acc_l = reg_acc & 0x0f
+		var acc_h = (reg_acc & 0xf0) >> 4
+		var add_bcd = (add_value_h * 10) + add_value_l
+		var acc_bcd = (acc_h * 10) + acc_l
+		var total = add_bcd + acc_bcd + carry_in
+		reg_acc = total % 10
+		reg_acc += (total / 10) << 4
+		pass
 	else:
 		# Normal mode ADC
 		var add_value = memory[address] + carry_in
@@ -626,8 +597,17 @@ func mnemonic_ADC(instruction: Instruction):
 		set_status_flag(flag_zero) if reg_acc == 0 else clear_status_flag(flag_zero)
 		set_status_flag(flag_negative) if reg_acc & 0x80 else clear_status_flag(flag_negative)
 		# overflow flag... the tricky one
-		error("ADC mode not fully defined")
-		
+		var acc_signed = reg_acc
+		if acc_signed & 0x80:
+			acc_signed -= 256
+		var add_signed = add_value
+		if add_signed & 0x80:
+			add_signed -= 256
+		var result = acc_signed + add_signed
+		if result >= -128 && result <= 127:
+			clear_status_flag(flag_overflow)
+		else:
+			set_status_flag(flag_overflow)
 	reg_acc += carry_in + memory[address]
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
@@ -639,8 +619,25 @@ func mnemonic_BEQ(instruction: Instruction):
 		reg_pc += offset
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
+func mnemonic_BIT(instruction: Instruction):
+	var address = addressing_mode_handlers[instruction.addressing_mode].call()
+	var val = memory[address]
+	var anded = val & reg_acc
+	set_status_flag(flag_zero) if anded == 0 else clear_status_flag(flag_zero)
+	set_status_flag(flag_negative) if anded & 0x80 else clear_status_flag(flag_negative)
+	set_status_flag(flag_overflow) if anded & 0x40 else clear_status_flag(flag_overflow)	
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
 func mnemonic_BNE(instruction: Instruction):
 	if reg_status & flag_zero == 0:
+		var offset = memory[reg_pc + 1]
+		if offset & 0x80:
+			offset = -(128 - (offset & 0x7f))
+		reg_pc += offset
+	reg_pc += addressing_mode_size[instruction.addressing_mode]
+
+func mnemonic_BPL(instruction: Instruction):
+	if reg_status & flag_negative != 0:
 		var offset = memory[reg_pc + 1]
 		if offset & 0x80:
 			offset = -(128 - (offset & 0x7f))
