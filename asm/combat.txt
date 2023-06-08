@@ -200,16 +200,16 @@
 
 			org $F000
 			
-	START	SEI                     ; Disable interrupts
-			CLD                     ; Clear decimal bit
-			LDX  #StkTop
-			TXS                     ; Init Stack
-			LDX  #$5D
-			JSR  ClearMem           ; zero out RAM except address $A2
-			LDA  #$10		;
-			STA  SWCHB+1            ; Port B data direction register and
-			STA  GameOn             ; GameOn (tho not quite a valid value)...
-			JSR  ClrGam		; clear game RAM $82-$A2
+f000START	SEI                     ; Disable interrupts
+f001		CLD                     ; Clear decimal bit
+f002		LDX  #StkTop
+f004		TXS                     ; Init Stack
+f005		LDX  #$5D
+f007		JSR  ClearMem           ; zero out RAM except address $A2
+f00a		LDA  #$10		;
+f00c		STA  SWCHB+1            ; Port B data direction register and
+f00f		STA  GameOn             ; GameOn (tho not quite a valid value)...
+f011		JSR  ClrGam		; clear game RAM $82-$A2
 			;
 		MLOOP   JSR  VCNTRL             ; Generate a VSYNC and begin VBLANK
 			;
@@ -514,22 +514,22 @@
 			BMI  CS_RTS		; don't select a new game.
 			;
 			INC  BINvar             ; SELECT: Go to next game.
-		ClrGam  LDX  #$DF               ; Clear data from current game ($82-$A2)
-		ClrGRST JSR  ClearMem
-			LDA  #$FF
-			STA  SelDbnce           ; Set flag: Sel has been down.
-			LDY  BINvar
-			LDA  VARMAP,Y           ; Get feature bits for this variation.
-			STA  GAMVAR
-			EOR  #$FF               ; #$FF signifies end of variations
-			BNE  SelGO              ; Not at end yet, set up new game
+f1a3	ClrGam  LDX  #$DF               ; Clear data from current game ($82-$A2)
+f1a5	ClrGRST JSR  ClearMem
+f1a8		LDA  #$FF
+f1aa		STA  SelDbnce           ; Set flag: Sel has been down.
+f1ac		LDY  BINvar
+f1ae		LDA  VARMAP,Y           ; Get feature bits for this variation.
+f1b1		STA  GAMVAR
+f1b3		EOR  #$FF               ; #$FF signifies end of variations
+f1b5		BNE  SelGO              ; Not at end yet, set up new game
 			LDX  #$DD		; Clear $80-$A2; resets BINvar, BCDvar
 			BNE  ClrGRST            ; so we start over. BNE is unconditional.
 			;
-		SelGO	LDA  BCDvar		; Since we have incremented BINvar, we
-			SED                     ; must increment BCDvar in BCD to keep
-			CLC                     ; it in sync. Note BCDvar is actually
-			ADC  #1                 ; BinVar+1, since it's incremented when
+f1bb	SelGO	LDA  BCDvar		; Since we have incremented BINvar, we
+f1bd		SED                     ; must increment BCDvar in BCD to keep
+f1be		CLC                     ; it in sync. Note BCDvar is actually
+f1bf		ADC  #1                 ; BinVar+1, since it's incremented when
 			STA  BCDvar             ; we reset but don't increment BINvar.
 			STA  SCORE              ; Display variation as score 0
 			CLD
@@ -1372,11 +1372,11 @@
 		; Returns with zero bit set.
 		;
 		ClearMem
-			LDA  #$00
-		ClrLoop	INX  
-			STA  $A2,X
-			BNE  ClrLoop  ;Continue until X rolls over.
-			RTS  
+f5bd		LDA  #$00
+f5bf	ClrLoop	INX  
+f5c0		STA  $A2,X
+f5c2		BNE  ClrLoop  ;Continue until X rolls over.
+f5c4		RTS  
 
 
 		;	Patterns for numbers

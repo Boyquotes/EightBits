@@ -1,0 +1,6 @@
+[gd_resource type="LabelSettings" load_steps=2 format=3 uid="uid://bgv4pkfdknivw"]
+
+[ext_resource type="SystemFont" uid="uid://bslg1kariihch" path="res://resources/ui/monospace_system_font.tres" id="1_2l715"]
+
+[resource]
+font = ExtResource("1_2l715")

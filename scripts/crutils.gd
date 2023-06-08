@@ -1,16 +1,16 @@
 extends Node
 
-func search_node(node: Node, name: String) -> Node:
-	if node.name == name:
+func search_node(node: Node, node_name: String) -> Node:
+	if node.name == node_name:
 		return node
 	for child in node.get_children():
-		var result = search_node(child, name)
+		var result = search_node(child, node_name)
 		if result:
 			return result
 	return null
 	
-func find_node(name: String) -> Node:
-	var node = search_node(get_tree().get_root(), name)
+func find_node(node_name: String) -> Node:
+	var node = search_node(get_tree().get_root(), node_name)
 	if node:
 		print("Node found:", node)
 	else:

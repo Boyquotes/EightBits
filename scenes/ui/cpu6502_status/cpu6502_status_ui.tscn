@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://bspxlflht1d26"]
+[gd_scene load_steps=3 format=3 uid="uid://bspxlflht1d26"]
 
 [ext_resource type="Script" path="res://scenes/ui/cpu6502_status/cpu6502_status_ui.gd" id="1_2yu76"]
+[ext_resource type="LabelSettings" uid="uid://bgv4pkfdknivw" path="res://resources/ui/register_label_settings.tres" id="2_osoa3"]
 
 [node name="cpu6502_status" type="Control"]
 layout_mode = 3
@@ -11,102 +12,109 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_2yu76")
 
-[node name="PCLabel" type="Label" parent="."]
-layout_mode = 0
+[node name="Window" type="Window" parent="."]
+title = "CPU"
+position = Vector2i(133, 46)
+size = Vector2i(147, 189)
+unresizable = true
+extend_to_title = true
+
+[node name="PCLabel" type="Label" parent="Window"]
 offset_right = 50.0
 offset_bottom = 26.0
 text = "PC:"
+label_settings = ExtResource("2_osoa3")
 horizontal_alignment = 2
 
-[node name="PCValue" type="Label" parent="."]
-layout_mode = 0
+[node name="PCValue" type="Label" parent="Window"]
 offset_left = 50.0
 offset_right = 90.0
 offset_bottom = 23.0
+label_settings = ExtResource("2_osoa3")
 
-[node name="AccLabel" type="Label" parent="."]
-layout_mode = 0
+[node name="AccLabel" type="Label" parent="Window"]
 offset_top = 20.0
 offset_right = 50.0
 offset_bottom = 46.0
 text = "Acc:"
+label_settings = ExtResource("2_osoa3")
 horizontal_alignment = 2
 
-[node name="AccValue" type="Label" parent="."]
-layout_mode = 0
+[node name="AccValue" type="Label" parent="Window"]
 offset_left = 50.0
 offset_top = 20.0
 offset_right = 100.0
 offset_bottom = 46.0
+label_settings = ExtResource("2_osoa3")
 
-[node name="XLabel" type="Label" parent="."]
-layout_mode = 0
+[node name="XLabel" type="Label" parent="Window"]
 offset_top = 40.0
 offset_right = 50.0
 offset_bottom = 66.0
 text = "X:"
+label_settings = ExtResource("2_osoa3")
 horizontal_alignment = 2
 
-[node name="XValue" type="Label" parent="."]
-layout_mode = 0
+[node name="XValue" type="Label" parent="Window"]
 offset_left = 50.0
 offset_top = 40.0
 offset_right = 100.0
 offset_bottom = 66.0
+label_settings = ExtResource("2_osoa3")
 
-[node name="YLabel" type="Label" parent="."]
-layout_mode = 0
+[node name="YLabel" type="Label" parent="Window"]
 offset_top = 60.0
 offset_right = 50.0
 offset_bottom = 86.0
 text = "Y:"
+label_settings = ExtResource("2_osoa3")
 horizontal_alignment = 2
 
-[node name="YValue" type="Label" parent="."]
+[node name="YValue" type="Label" parent="Window"]
 offset_left = 50.0
 offset_top = 60.0
 offset_right = 100.0
 offset_bottom = 86.0
+label_settings = ExtResource("2_osoa3")
 
-[node name="SPLabel" type="Label" parent="."]
-layout_mode = 0
+[node name="SPLabel" type="Label" parent="Window"]
 offset_top = 80.0
 offset_right = 50.0
 offset_bottom = 106.0
 text = "SP:"
+label_settings = ExtResource("2_osoa3")
 horizontal_alignment = 2
 
-[node name="SPValue" type="Label" parent="."]
-layout_mode = 0
+[node name="SPValue" type="Label" parent="Window"]
 offset_left = 50.0
 offset_top = 80.0
 offset_right = 100.0
 offset_bottom = 106.0
+label_settings = ExtResource("2_osoa3")
 
-[node name="StatusLabel" type="Label" parent="."]
-layout_mode = 0
+[node name="StatusLabel" type="Label" parent="Window"]
 offset_top = 100.0
 offset_right = 50.0
 offset_bottom = 126.0
 text = "SR:"
+label_settings = ExtResource("2_osoa3")
 horizontal_alignment = 2
 
-[node name="StatusValue" type="Label" parent="."]
-layout_mode = 0
+[node name="StatusValue" type="Label" parent="Window"]
 offset_left = 50.0
 offset_top = 100.0
 offset_right = 100.0
 offset_bottom = 126.0
+label_settings = ExtResource("2_osoa3")
 
-[node name="StepButton" type="Button" parent="."]
-layout_mode = 0
+[node name="StepButton" type="Button" parent="Window"]
 offset_left = 21.0
 offset_top = 149.0
 offset_right = 66.0
 offset_bottom = 180.0
 text = "STEP"
 
-[node name="RunButton" type="Button" parent="."]
+[node name="RunButton" type="Button" parent="Window"]
 offset_left = 82.0
 offset_top = 148.0
 offset_right = 127.0
@@ -114,5 +122,5 @@ offset_bottom = 179.0
 text = "RUN
 "
 
-[connection signal="pressed" from="StepButton" to="." method="_on_step_button_pressed"]
-[connection signal="pressed" from="RunButton" to="." method="_on_run_button_pressed"]
+[connection signal="pressed" from="Window/StepButton" to="." method="_on_step_button_pressed"]
+[connection signal="pressed" from="Window/RunButton" to="." method="_on_run_button_pressed"]
