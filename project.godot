@@ -21,11 +21,15 @@ Crutils="*res://scripts/crutils.gd"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/cpu6502_inspector/plugin.cfg", "res://addons/gut/plugin.cfg")
+enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/asm6502resource/plugin.cfg")
 
 [gui]
 
 common/drop_mouse_on_gui_input_disabled=true
+
+[importer_defaults]
+
+asm6502={}
 
 [mono]
 

@@ -1,15 +1,16 @@
+class_name Memory
 extends Node
 
-var memory: PackedByteArray
+var _memory: PackedByteArray
 
-func _ready() -> void:
-	memory.resize(65536)
+func _init() -> void:
+	_memory.resize(65536)
 
-func _process(_delta: float) -> void:
+func _deinit():
 	pass
 
 func read(address: int) -> int:
-	return memory[address & 0xffff]
+	return _memory[address & 0xffff]
 
 func write(address: int, value: int) -> void:
-	memory[address & 0xffff] = value & 0xff	
+	_memory[address & 0xffff] = value & 0xff	

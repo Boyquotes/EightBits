@@ -1,3 +1,4 @@
+class_name Cpu6502
 extends Node
 
 var reg_acc: int
@@ -27,6 +28,7 @@ class Instruction:
 	@export var addressing_mode: AddressingMode
 	var cycles: int
 	var opcode: int
+	var mnemonic_instance: Cpu6502Mnemonic
 
 enum Mnemonic { LDA, LDX, LDY, 
 				STA, STX, STY,
@@ -207,11 +209,16 @@ var addressing_mode_handlers: Dictionary = {
 	AddressingMode.INDIDXY: addrmode_INDIDXY,
 }
 # Make this external at some point
-var memory: PackedByteArray
+var memory: Memory
+
+func _deinit():
+	memory.free()
+	instruction_set.clear()
 
 # add a hardware API ? maybe later
 
-func _ready():
+func _init():
+	memory = Memory.new()
 	# power-on logic here
 	reg_acc = 0
 	reg_x = 0
@@ -223,19 +230,17 @@ func _ready():
 	current_opcode = 0
 	
 	instruction_set.resize(256)
-	memory.resize(65536)
-	
 	add_instructions()
-	load_rom()
 
-func load_rom():
-	var file = FileAccess.open("res://roms/combat.bin", FileAccess.READ)
-	var content = file.get_buffer(file.get_length())
-	for i in range(0, 2048):
-		memory[i + 0xf000] = content[i]
-		memory[i + 0xf800] = content[i]
-	var reset = memory[0xfffc] + (memory[0xfffd] << 8)
+func set_pc_from_reset_vector():
+	var reset = memory.read(0xfffc) + (memory.read(0xfffd) << 8)
 	reg_pc = reset
+
+func load_rom(filename: String, location: int):
+	var file = FileAccess.open(filename, FileAccess.READ)
+	var content = file.get_buffer(file.get_length())
+	for i in range(0, file.get_length()):
+		memory.write(i + location, content[i])
 
 func add_instructions():
 	# ADC
@@ -442,12 +447,13 @@ func add_instructions():
 	# TYA
 	add_instruction(Mnemonic.TYA, AddressingMode.IMP, 0x98, 2)
 
-func add_instruction(mnemonic, addressing_mode, opcode, cycles):
-	var instruction = Instruction.new()
+func add_instruction(mnemonic: Mnemonic, addressing_mode: AddressingMode, opcode: int, cycles: int, mnemonic_instance: Cpu6502Mnemonic = null):
+	var instruction: Instruction = Instruction.new()
 	instruction.mnemonic = mnemonic
 	instruction.addressing_mode = addressing_mode
 	instruction.opcode = opcode
 	instruction.cycles = cycles
+	instruction.mnemonic_instance = mnemonic_instance
 	instruction_set[opcode] = instruction
 
 func clock(_clockState: bool):
@@ -487,17 +493,17 @@ func get_status_register_string() -> String:
 	return ret
 
 func print_status():
-	var instruction = instruction_set[current_opcode]
-	var format_string = "%08d PC:%04x(%d) ACC:%02x X:%02x Y:%02x SP:%02x %s %s %s"
-	var actual_string = format_string % [instruction_count, reg_pc, reg_pc, reg_acc, reg_x, reg_y, reg_sp, get_status_register_string(), mnemonic_name[instruction.mnemonic], addressing_mode_name[instruction.addressing_mode]]
+	var instruction: Instruction = instruction_set[current_opcode]
+	var format_string: String = "%08d PC:%04x(%d) ACC:%02x X:%02x Y:%02x SP:%02x %s %s %s"
+	var actual_string: String = format_string % [instruction_count, reg_pc, reg_pc, reg_acc, reg_x, reg_y, reg_sp, get_status_register_string(), mnemonic_name[instruction.mnemonic], addressing_mode_name[instruction.addressing_mode]]
 	print(actual_string)
 
 func tick_instruction(num_instructions: int):
 	for i in range(0, num_instructions):
 		if !internal_error:
-			current_opcode = memory[reg_pc]
+			current_opcode = memory.read(reg_pc)
 			print_status()
-			var current_instruction = instruction_set[current_opcode]
+			var current_instruction: Instruction = instruction_set[current_opcode]
 			mnemonic_handlers[current_instruction.mnemonic].call(current_instruction)
 			instruction_count += 1
 		else:
@@ -522,9 +528,9 @@ func addrmode_ACC() -> int:
 func addrmode_IMM() -> int:
 	return reg_pc + 1
 func addrmode_ZP() -> int:
-	return memory[reg_pc+1]
+	return memory.read(reg_pc+1)
 func addrmode_ZPX() -> int:
-	return (memory[reg_pc+1] + reg_x) & 0xff
+	return (memory.read(reg_pc+1) + reg_x) & 0xff
 func addrmode_ZPY() -> int:
 	error("addrmode_ZPY not defined")
 	return 0
@@ -537,7 +543,7 @@ func addrmode_ABSX() -> int:
 	error("addrmode_ABSX not defined")
 	return 0
 func addrmode_ABSY() -> int:
-	return memory[reg_pc+1] | (memory[reg_pc+2] << 8) + reg_y
+	return memory.read(reg_pc+1) | (memory.read(reg_pc+2) << 8) + reg_y
 func addrmode_IND() -> int:
 	error("addrmode_IND not defined")
 	return 0
@@ -569,60 +575,59 @@ func update_negative_flag(val):
 # Mnemonic handlers
 
 func mnemonic_ADC(instruction: Instruction):
-	var carry_in = 0
+	var carry_in: int = 0
 	if reg_status & flag_carry:
 		carry_in = 1
-	var address = addressing_mode_handlers[instruction.addressing_mode].call()
+	var address: int = addressing_mode_handlers[instruction.addressing_mode].call()
 	
 	if reg_status & flag_decimal:
 		# Decimal mode ADC
 		#error("ADC Decimal mode not defined")
-		var add_value = memory[address]
-		var add_value_l = add_value & 0x0f
-		var add_value_h = (add_value & 0xf0) >> 4
-		var acc_l = reg_acc & 0x0f
-		var acc_h = (reg_acc & 0xf0) >> 4
-		var add_bcd = (add_value_h * 10) + add_value_l
-		var acc_bcd = (acc_h * 10) + acc_l
-		var total = add_bcd + acc_bcd + carry_in
+		var add_value: int = memory.read(address)
+		var add_value_l: int = add_value & 0x0f
+		var add_value_h: int = (add_value & 0xf0) >> 4
+		var acc_l: int = reg_acc & 0x0f
+		var acc_h: int = (reg_acc & 0xf0) >> 4
+		var add_bcd: int = (add_value_h * 10) + add_value_l
+		var acc_bcd: int = (acc_h * 10) + acc_l
+		var total: int = add_bcd + acc_bcd + carry_in
 		reg_acc = total % 10
 		reg_acc += (total / 10) << 4
-		pass
 	else:
 		# Normal mode ADC
-		var add_value = memory[address] + carry_in
-		var unclamped_total = reg_acc + add_value
+		var add_value: int = memory.read(address) + carry_in
+		var unclamped_total: int = reg_acc + add_value
 		reg_acc = unclamped_total & 0xff
 		set_status_flag(flag_carry) if unclamped_total & 0x100 else clear_status_flag(flag_carry)
 		set_status_flag(flag_zero) if reg_acc == 0 else clear_status_flag(flag_zero)
 		set_status_flag(flag_negative) if reg_acc & 0x80 else clear_status_flag(flag_negative)
 		# overflow flag... the tricky one
-		var acc_signed = reg_acc
+		var acc_signed: int = reg_acc
 		if acc_signed & 0x80:
 			acc_signed -= 256
-		var add_signed = add_value
+		var add_signed: int = add_value
 		if add_signed & 0x80:
 			add_signed -= 256
-		var result = acc_signed + add_signed
+		var result: int = acc_signed + add_signed
 		if result >= -128 && result <= 127:
 			clear_status_flag(flag_overflow)
 		else:
 			set_status_flag(flag_overflow)
-	reg_acc += carry_in + memory[address]
+	reg_acc += carry_in + memory.read(address)
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_BEQ(instruction: Instruction):
 	if reg_status & flag_zero != 0:
-		var offset = memory[reg_pc + 1]
+		var offset: int = memory.read(reg_pc + 1)
 		if offset & 0x80:
 			offset = -(128 - (offset & 0x7f))
 		reg_pc += offset
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_BIT(instruction: Instruction):
-	var address = addressing_mode_handlers[instruction.addressing_mode].call()
-	var val = memory[address]
-	var anded = val & reg_acc
+	var address: int = addressing_mode_handlers[instruction.addressing_mode].call()
+	var val: int = memory.read(address)
+	var anded: int = val & reg_acc
 	set_status_flag(flag_zero) if anded == 0 else clear_status_flag(flag_zero)
 	set_status_flag(flag_negative) if anded & 0x80 else clear_status_flag(flag_negative)
 	set_status_flag(flag_overflow) if anded & 0x40 else clear_status_flag(flag_overflow)	
@@ -630,7 +635,7 @@ func mnemonic_BIT(instruction: Instruction):
 
 func mnemonic_BNE(instruction: Instruction):
 	if reg_status & flag_zero == 0:
-		var offset = memory[reg_pc + 1]
+		var offset: int = memory.read(reg_pc + 1)
 		if offset & 0x80:
 			offset = -(128 - (offset & 0x7f))
 		reg_pc += offset
@@ -638,7 +643,7 @@ func mnemonic_BNE(instruction: Instruction):
 
 func mnemonic_BPL(instruction: Instruction):
 	if reg_status & flag_negative != 0:
-		var offset = memory[reg_pc + 1]
+		var offset: int = memory.read(reg_pc + 1)
 		if offset & 0x80:
 			offset = -(128 - (offset & 0x7f))
 		reg_pc += offset
@@ -653,8 +658,8 @@ func mnemonic_CLD(instruction: Instruction):
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_EOR(instruction: Instruction):
-	var address = addressing_mode_handlers[instruction.addressing_mode].call()
-	reg_acc = reg_acc ^ memory[address]
+	var address: int = addressing_mode_handlers[instruction.addressing_mode].call()
+	reg_acc = reg_acc ^ memory.read(address)
 	update_zero_flag(reg_acc)
 	update_negative_flag(reg_acc)
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
@@ -666,36 +671,36 @@ func mnemonic_INX(instruction: Instruction):
 	update_negative_flag(reg_x)
 
 func mnemonic_JSR(instruction: Instruction):
-	var return_address = reg_pc + 2
-	memory[reg_sp] = return_address & 0xff
+	var return_address: int = reg_pc + 2
+	memory.write(reg_sp, return_address & 0xff)
 	reg_sp -= 1
-	memory[reg_sp] = (return_address & 0xff00) >> 8
+	memory.write(reg_sp, (return_address & 0xff00) >> 8)
 	reg_sp -= 1
-	var address = addressing_mode_handlers[instruction.addressing_mode].call()
-	var dest = memory[address] | (memory[address + 1] << 8)
+	var address: int = addressing_mode_handlers[instruction.addressing_mode].call()
+	var dest: int = memory.read(address) | (memory.read(address + 1) << 8)
 	reg_pc = dest
 
 func mnemonic_LDA(instruction: Instruction):
-	var address = addressing_mode_handlers[instruction.addressing_mode].call()
-	reg_acc = memory[address]
+	var address: int = addressing_mode_handlers[instruction.addressing_mode].call()
+	reg_acc = memory.read(address)
 	update_zero_flag(reg_acc)
 	update_negative_flag(reg_acc)
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_LDX(instruction: Instruction):
-	reg_x = memory[addressing_mode_handlers[instruction.addressing_mode].call()]
+	reg_x = memory.read(addressing_mode_handlers[instruction.addressing_mode].call())
 	update_zero_flag(reg_x)
 	update_negative_flag(reg_x)
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_LDY(instruction: Instruction):
-	reg_y = memory[addressing_mode_handlers[instruction.addressing_mode].call()]
+	reg_y = memory.read(addressing_mode_handlers[instruction.addressing_mode].call())
 	update_zero_flag(reg_y)
 	update_negative_flag(reg_y)
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_RTS(_instruction: Instruction):
-	var return_address = (memory[reg_sp + 1] << 8) | memory[reg_sp + 2]
+	var return_address: int = (memory.read(reg_sp + 1) << 8) | memory.read(reg_sp + 2)
 	reg_sp += 2
 	reg_pc = return_address + 1
 	pass
@@ -709,18 +714,18 @@ func mnemonic_SEI(instruction: Instruction):
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_STA(instruction: Instruction):
-	var address = addressing_mode_handlers[instruction.addressing_mode].call()
-	memory[address] = reg_acc
+	var address: int = addressing_mode_handlers[instruction.addressing_mode].call()
+	memory.write(address, reg_acc)
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_STX(instruction: Instruction):
-	var address = addressing_mode_handlers[instruction.addressing_mode].call()
-	memory[address] = reg_x
+	var address: int = addressing_mode_handlers[instruction.addressing_mode].call()
+	memory.write(address, reg_x)
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_STY(instruction: Instruction):
-	var address = addressing_mode_handlers[instruction.addressing_mode].call()
-	memory[address] = reg_y
+	var address: int = addressing_mode_handlers[instruction.addressing_mode].call()
+	memory.write(address, reg_y)
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 
 func mnemonic_TXS(instruction: Instruction):
@@ -728,6 +733,6 @@ func mnemonic_TXS(instruction: Instruction):
 	reg_pc += addressing_mode_size[instruction.addressing_mode]
 	
 func mnemonic_UNKNOWN(instruction: Instruction):
-	error("unknown mnemonic" + mnemonic_name[instruction.mnemonic])
+	error("unknown mnemonic " + mnemonic_name[instruction.mnemonic])
 	pass
 
