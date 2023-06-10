@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3 uid="uid://3ke3c11dtrwa"]
+
+[ext_resource type="Script" path="res://addons/assembler/assembler_panel.gd" id="1_rfn5k"]
+
+[node name="assembler_dock" type="Panel"]
+offset_right = 200.0
+offset_bottom = 200.0
+script = ExtResource("1_rfn5k")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 198.0
+offset_bottom = 241.0
+
+[node name="Label" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+text = "PLAP
+"
