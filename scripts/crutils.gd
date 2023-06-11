@@ -1,3 +1,4 @@
+@tool
 extends Node
 
 func search_node(node: Node, node_name: String) -> Node:

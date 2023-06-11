@@ -21,7 +21,7 @@ Crutils="*res://scripts/crutils.gd"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/gut/plugin.cfg", "res://addons/assembler/plugin.cfg")
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
 [gui]
 

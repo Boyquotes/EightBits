@@ -4,7 +4,9 @@
 
 Do we make it like the Godot editor itself ? Fullscreen with a 
 
-128	-128
-129	-127
-130	-126
-131	-125
+## Assembler
+
+Example command line:
+
+./dasm/dasm asm/test_lda.asm -obin/test_lda.bin -lbin/test_lda.lst -sbin/test_lda.sym
+
