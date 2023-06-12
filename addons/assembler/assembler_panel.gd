@@ -16,10 +16,13 @@ func assembler_file_exists(name: String) -> bool:
 	return found
 
 func remove_deleted_asm_files():
+	var to_delete = []
 	for assembler_file in assembler_files:
 		if not assembler_files[assembler_file].is_input_file_present():
-			print("Missing file "+assembler_file)
-			assert(false, "TO BE IMPLEMENTED")
+			print("Missing file " + assembler_file)
+			to_delete.append(assembler_file)
+	for del in to_delete:
+		assembler_files.remove(del)
 
 func remove_all_assembler_files_ui_items():
 	var children = files_vbox.get_children()
@@ -44,18 +47,12 @@ func get_all_asm_filenames(root: String) -> Array[String]:
 		dir.list_dir_end()
 	return ret
 
-func _on_refresh_button_pressed():
-	print("Refresh pressed")
+func _refresh():
 	remove_deleted_asm_files()
 	remove_all_assembler_files_ui_items()
 
 	var asm_filenames = get_all_asm_filenames("res://asm")
 	for asm_filename in asm_filenames:
-		
-		# add label for file - this needs to be a proper complex element at some point
-		var new_label = Label.new()
-		new_label.text = asm_filename
-		files_vbox.add_child(new_label)
 		
 		# add asm_file to known assembler files
 		if asm_filename not in assembler_files:
@@ -63,11 +60,24 @@ func _on_refresh_button_pressed():
 			new_assembler_file.set_input_filename(asm_filename)
 			new_assembler_file.set_file_root("res://asm/")
 			assembler_files[asm_filename] = new_assembler_file
+			
+		# add label for file - this needs to be a proper complex element at some point
+		var new_label = Label.new()
+		if assembler_files[asm_filename].get_built():
+			new_label.text = asm_filename + " - BUILT OK"
+		else:
+			new_label.text = asm_filename + " - NOT BUILT"
+		files_vbox.add_child(new_label)
+
+func _on_refresh_button_pressed():
+	print("Refresh pressed")
+	_refresh()
 
 func _on_build_button_pressed():
 	print("Build pressed")
 	for assembler_file in assembler_files:
 		assembler_files[assembler_file].build()
+	_refresh()
 
 func _on_rebuild_all_button_pressed():
 	print("Rebuild All pressed")

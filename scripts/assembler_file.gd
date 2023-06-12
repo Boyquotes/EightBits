@@ -8,6 +8,8 @@ var _output_filename: String
 var _list_filename: String
 var _symbol_filename: String
 var _build_output: PackedStringArray
+var _built: bool
+var _symbols = {}
 
 func _init():
 	pass
@@ -41,7 +43,19 @@ func set_input_filename(filename: String):
 func get_input_filename() -> String:
 	return _input_filename
 
+func get_built():
+	return _built
+
+func _parse_symbols():
+	_symbols = {}
+	var contents = FileAccess.get_file_as_string(_file_root + _symbol_filename)
+	var contents_split = contents.split("\n")
+	for line in contents_split:
+		if not line.begins_with("---"):
+			var words = line.split(" ")
+
 func build() -> bool:
+	_built = false
 	print("Building " + _input_filename)
 	var dot_pos = _input_filename.find(".asm")
 	var prefix = _input_filename.substr(0, dot_pos)
@@ -49,8 +63,11 @@ func build() -> bool:
 	OS.execute("./dasm/dasm", ["asm/" + prefix + ".asm", "-oasm/"+prefix+".bin", "-lasm/"+prefix+".lst", "-sasm/"+prefix+".sym", "-v1"], output, true, true)
 	_build_output = output[0].split("\n")
 	if output[0].ends_with("Complete. (0)\n"):
-		print("build successful")
-		return true
+		_built = true
+		_parse_symbols()
 	else:
-		print("build failed")
-		return false
+		_built = false
+		print("ERROR")
+		for line in _build_output:
+			print(line)
+	return _built

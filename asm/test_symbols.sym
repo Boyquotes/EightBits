@@ -1,0 +1,17 @@
+--- Symbol List (sorted by symbol)
+Code_start               1000                  
+DATA_ONE                 0401              (R )
+DATA_THREE               0403              (R )
+DATA_TWO                 0402              (R )
+DATA_ZERO                0400              (R )
+PAGE_NEXT                0610                  
+PAGE_NEXT_ROOT           05c0              (R )
+ZP_D0                    0083                  
+ZP_D1                    0085                  
+ZP_D2                    0087                  
+ZP_D3                    0089                  
+ZP_DP                    008b                  
+ZP_ONE                   0081                  
+ZP_TWO                   0082                  
+ZP_ZERO                  0080                  
+--- End of Symbol List.
