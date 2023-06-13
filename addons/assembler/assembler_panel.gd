@@ -5,7 +5,13 @@ var editor_interface
 
 var assembler_files = {}
 var source_folder: String
+#var files_vbox: VBoxContainer
+
 @onready var files_vbox: VBoxContainer = Crutils.find_node("Files VBoxContainer")
+
+func _init_ui():
+	if files_vbox == null:
+		files_vbox = Crutils.find_node("Files VBoxContainer")
 
 func _ready():
 	source_folder = "res://asm"
@@ -16,6 +22,7 @@ func assembler_file_exists(name: String) -> bool:
 	return found
 
 func remove_deleted_asm_files():
+	_init_ui()
 	var to_delete = []
 	for assembler_file in assembler_files:
 		if not assembler_files[assembler_file].is_input_file_present():

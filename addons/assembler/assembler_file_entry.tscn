@@ -1,4 +1,6 @@
-[gd_scene format=3 uid="uid://c4qdr00r422xs"]
+[gd_scene load_steps=2 format=3 uid="uid://c4qdr00r422xs"]
+
+[ext_resource type="Script" path="res://addons/assembler/assembler_file_entry.gd" id="1_fk4q2"]
 
 [node name="assembler_file_entry" type="Control"]
 layout_mode = 3
@@ -9,13 +11,15 @@ offset_right = -752.0
 offset_bottom = -618.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_fk4q2")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = -83.0
+offset_left = 1.0
+offset_right = 7.0
 offset_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -33,14 +37,24 @@ alignment = 2
 [node name="BuildButton" type="Button" parent="HBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 10
-text = "B"
+text = "Build"
 
 [node name="SymbolsButton" type="Button" parent="HBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 10
-text = "S"
+text = "Symbols"
 
 [node name="ListButton" type="Button" parent="HBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 10
-text = "L"
+text = "List"
+
+[node name="DumpButton" type="Button" parent="HBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 10
+text = "Dump"
+
+[connection signal="pressed" from="HBoxContainer/HBoxContainer/BuildButton" to="." method="_on_build_button_pressed"]
+[connection signal="pressed" from="HBoxContainer/HBoxContainer/SymbolsButton" to="." method="_on_symbols_button_pressed"]
+[connection signal="pressed" from="HBoxContainer/HBoxContainer/ListButton" to="." method="_on_list_button_pressed"]
+[connection signal="pressed" from="HBoxContainer/HBoxContainer/DumpButton" to="." method="_on_dump_button_pressed"]

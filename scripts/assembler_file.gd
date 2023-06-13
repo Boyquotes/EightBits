@@ -52,7 +52,18 @@ func _parse_symbols():
 	var contents_split = contents.split("\n")
 	for line in contents_split:
 		if not line.begins_with("---"):
+			var this_symbol = ""
+			var this_value = 0
 			var words = line.split(" ")
+			for word in words:
+				if word != "":
+					if this_symbol == "":
+						this_symbol = word
+					else:
+						this_value = Crutils.hexstring_to_int(word)
+						_symbols[this_symbol] = this_value
+#	for symbol in _symbols:
+#		print(symbol + " = " + str(_symbols[symbol]))
 
 func build() -> bool:
 	_built = false
